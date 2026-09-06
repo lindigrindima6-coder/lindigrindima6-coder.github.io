@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jlor — поест next-gen loader для CS2</title>
+<meta name="description" content="Быстрый и стабильный загрузчик для CS2. Встроенное меню, скины, ESP, автоинжект и полная приватность.">
+<meta name="theme-color" content="#070b14">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #070b14;
+    --card: #0e1526;
+    --line: rgba(120, 160, 255, 0.12);
+    --text: #e7ecf7;
+    --muted: #8b93a7;
+    --accent1: #22d3ee;
+    --accent2: #818cf8;
+    --accent3: #e879f9;
+    --green: #34d399;
+    --red: #f87171;
+  }
+
+  html { scroll-padding-top: 70px; }
+
+  body {
+    font-family: "Manrope", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background: radial-gradient(1200px 700px at 50% -10%, #131b36 0%, var(--bg) 55%), var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .brand, .intro-brand {
+    font-family: "Unbounded", "Manrope", "Segoe UI", sans-serif;
+  }
+
+  ::selection { background: rgba(129, 140, 248, 0.4); }
+
+  #progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+    z-index: 60;
+    box-shadow: 0 0 12px rgba(129, 140, 248, 0.8);
+  }
+
+  #cursor-glow {
+    position: fixed;
+    width: 340px; height: 340px;
+    left: 0; top: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(129, 140, 248, 0.16) 0%, transparent 65%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 1;
+    mix-blend-mode: screen;
+    display: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) { #cursor-glow { display: block; } }
+
+  .bg-grid {
+    position: fixed;
+    inset: -80px 0 0 0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(1000px 700px at 50% 0%, #000 40%, transparent 85%);
+    mask-image: radial-gradient(1000px 700px at 50% 0%, #000 40%, transparent 85%);
+    pointer-events: none;
+    z-index: 0;
+    animation: gridFloat 26s linear infinite;
+  }
+
+  @keyframes gridFloat {
+    from { background-position: 0 0, 0 0; }
+    to { background-position: 0 46px, 46px 0; }
+  }
+
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(110px);
+    pointer-events: none;
+    z-index: 0;
+    will-change: transform;
+  }
+
+  .orb-a {
+    width: 560px; height: 560px;
+    background: var(--accent2);
+    top: -200px; left: 8%;
+    opacity: 0.3;
+    animation: driftA 16s ease-in-out infinite alternate;
+  }
+
+  .orb-b {
+    width: 480px; height: 480px;
+    background: var(--accent1);
+    top: 32%; right: -160px;
+    opacity: 0.2;
+    animation: driftB 19s ease-in-out infinite alternate;
+  }
+
+  .orb-c {
+    width: 420px; height: 420px;
+    background: var(--accent3);
+    bottom: -160px; left: 30%;
+    opacity: 0.14;
+    animation: driftC 22s ease-in-out infinite alternate;
+  }
+
+  @keyframes driftA { to { transform: translate(120px, 90px) scale(1.15); } }
+  @keyframes driftB { to { transform: translate(-100px, -60px) scale(1.1); } }
+  @keyframes driftC { to { transform: translate(140px, -110px) scale(1.2); } }
+
+  .wrap { position: relative; z-index: 2; max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(14px);
+    background: rgba(7, 11, 20, 0.72);
+    border-bottom: 1px solid var(--line);
+  }
+
+  nav .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 62px;
+  }
+
+  .brand { font-size: 22px; font-weight: 800; letter-spacing: 2px; position: relative; }
+
+  .brand span {
+    background: linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: brandSlide 5s ease-in-out infinite;
+  }
+
+  @keyframes brandSlide { 0%,100% { background-position: 0% 0; } 50% { background-position: 100% 0; } }
+
+  nav .links { display: flex; gap: 26px; align-items: center; font-size: 14px; }
+
+  nav .links a { color: var(--muted); text-decoration: none; transition: color .2s, transform .2s; display: inline-block; }
+  nav .links a:hover { color: var(--text); transform: translateY(-1px); }
+
+  .badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent1);
+    border: 1px solid rgba(34, 211, 238, 0.35);
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(34, 211, 238, 0.08);
+    animation: pulseDot 2.4s ease-in-out infinite;
+  }
+
+  .hero { padding: 110px 0 70px; text-align: center; }
+
+  .up {
+    opacity: 0;
+    transform: translateY(28px);
+    animation: rise .9s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+
+  body:not(.ready) .up { animation: none; opacity: 0; transform: translateY(28px); }
+
+  .d1 { animation-delay: .3s; }
+  .d2 { animation-delay: .42s; }
+  .d3 { animation-delay: .8s; }
+  .d4 { animation-delay: 1s; }
+  .d5 { animation-delay: 1.15s; }
+
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  .title-wrap { perspective: 700px; }
+
+  .hl {
+    display: inline-block;
+    background: linear-gradient(100deg, #67e8f9 0%, var(--accent2) 45%, var(--accent3) 90%);
+    background-size: 220% 220%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation:
+      hue 9s ease-in-out infinite,
+      letterRise .85s cubic-bezier(.2,.7,.3,1) forwards;
+    animation-delay: 0s, calc(var(--i, 0) * 85ms + 330ms);
+  }
+
+  body:not(.ready) .hl { animation: none; opacity: 0; transform: translateY(130px) rotateX(-75deg); }
+
+  @keyframes letterRise {
+    from { opacity: 0; transform: translateY(130px) rotateX(-75deg); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .shimmer {
+    opacity: 0;
+    animation: shimmerIn 1s ease 1.05s forwards, shimmerSweep 5.5s ease-in-out infinite 1.35s;
+  }
+
+  @keyframes shimmerIn { to { opacity: 1; } }
+
+  @keyframes shimmerSweep {
+    0%, 55% { background-position: 260% 0; }
+    100% { background-position: -80% 0; }
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13px;
+    color: var(--accent1);
+    border: 1px solid rgba(34, 211, 238, 0.3);
+    padding: 7px 15px;
+    border-radius: 999px;
+    background: rgba(34, 211, 238, 0.06);
+    margin-bottom: 30px;
+  }
+
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+    animation: ping 1.8s ease-out infinite;
+  }
+
+  @keyframes ping {
+    0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+    70% { box-shadow: 0 0 0 9px rgba(52, 211, 153, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  }
+
+  .title-wrap { position: relative; display: inline-block; }
+
+  .title-glow {
+    position: absolute;
+    inset: -12% -6%;
+    background: radial-gradient(60% 70% at 50% 50%, rgba(129, 140, 248, 0.35), transparent 70%);
+    filter: blur(26px);
+    animation: glowBreath 4s ease-in-out infinite;
+    z-index: -1;
+  }
+
+  @keyframes glowBreath { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+
+  .hero h1 {
+    font-size: clamp(52px, 10vw, 110px);
+    font-weight: 900;
+    letter-spacing: 12px;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .hero h1 .cl { display: inline-block; }
+
+  .hero h1 .shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.55) 50%, transparent 65%);
+    background-size: 260% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    pointer-events: none;
+  }
+
+  @keyframes hue { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+  .rot-chip {
+    margin-top: 20px;
+    height: 30px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .rot-chip .word {
+    color: var(--green);
+    text-shadow: 0 0 14px rgba(52, 211, 153, 0.5);
+    display: inline-block;
+    animation: popIn .5s ease;
+  }
+
+  @keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(.9); } }
+
+  .hero .sub { margin: 6px auto 0; max-width: 560px; color: var(--muted); font-size: 18px; }
+
+  .hero .meta { margin-top: 14px; color: var(--muted); font-size: 13px; }
+
+  .btn-wrap { margin-top: 42px; position: relative; }
+
+  .btn-halo {
+    position: absolute;
+    inset: -6px;
+    border-radius: 16px;
+    background: linear-gradient(100deg, rgba(34,211,238,.5), rgba(232,121,249,.5));
+    filter: blur(18px);
+    opacity: .6;
+    animation: haloPulse 3s ease-in-out infinite;
+    z-index: -1;
+  }
+
+  @keyframes haloPulse { 0%,100% { opacity: .4; transform: scale(1); } 50% { opacity: .85; transform: scale(1.04); } }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 17px 38px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #060a15;
+    text-decoration: none;
+    border-radius: 12px;
+    background: linear-gradient(100deg, var(--accent1), var(--accent2));
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 18px 50px -12px rgba(99, 102, 241, 0.55);
+    transition: transform .2s, box-shadow .2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::after {
+    content: "";
+    position: absolute;
+    top: -50%; bottom: -50%;
+    left: -60%;
+    width: 40%;
+    background: linear-gradient(105deg, transparent, rgba(255,255,255,0.5), transparent);
+    transform: skewX(-20deg);
+    transition: left .5s ease;
+  }
+
+  .btn:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 26px 70px -14px rgba(99, 102, 241, 0.8); }
+  .btn:hover::after { left: 130%; }
+  .btn:active { transform: translateY(0) scale(.99); }
+
+  .btn .arr { font-size: 20px; }
+
+  .btn-note { margin-top: 16px; font-size: 13px; color: var(--muted); }
+  .btn-note b { color: var(--green); font-weight: 600; }
+
+  .term-sec { padding: 80px 0 30px; }
+
+  .term-sec h2 { text-align: center; font-size: 32px; font-weight: 800; letter-spacing: 1px; }
+  .term-sec .desc { text-align: center; color: var(--muted); margin: 10px 0 40px; }
+
+  .term {
+    max-width: 640px;
+    margin: 0 auto;
+    background: #0a0f1d;
+    border: 1px solid rgba(120, 160, 255, 0.18);
+    border-radius: 14px;
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.8), 0 0 40px -18px rgba(129,140,248,0.4);
+    overflow: hidden;
+    font-family: Consolas, "Courier New", monospace;
+    transform: perspective(1200px) rotateX(0deg);
+    transition: transform .5s ease, box-shadow .5s ease;
+  }
+
+  .term:hover { transform: perspective(1200px) rotateX(2deg) translateY(-6px); box-shadow: 0 40px 90px -30px rgba(0,0,0,0.9), 0 0 60px -14px rgba(129,140,248,0.55); }
+
+  .term-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .term-head i {
+    width: 11px; height: 11px; border-radius: 50%;
+  }
+
+  .term-head i:nth-child(1) { background: var(--red); }
+  .term-head i:nth-child(2) { background: #fbbf24; }
+  .term-head i:nth-child(3) { background: var(--green); }
+
+  .term-title { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+  .term-body {
+    padding: 18px 20px 22px;
+    min-height: 160px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .term-body .l { white-space: pre-wrap; }
+  .term-body .dim { color: var(--muted); }
+  .term-body .ok { color: var(--green); }
+  .term-body .accent { color: var(--accent1); }
+  .term-body .bar { color: var(--accent2); letter-spacing: 1px; }
+  .term-body .cursor::after {
+    content: "▋";
+    color: var(--accent2);
+    animation: blink 1s steps(1) infinite;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .term-item {
+    display: flex;
+    gap: 10px;
+    padding: 5px 0;
+  }
+
+  .term-item .k { color: var(--accent1); }
+  .term-item .name { color: var(--text); }
+  .term-item .st { margin-left: auto; color: var(--green); font-size: 11px; }
+
+  .features { padding: 70px 0; }
+
+  .features h2, .section-h { text-align: center; font-size: 32px; font-weight: 800; letter-spacing: 1px; margin-bottom: 10px; }
+
+  .features .desc { text-align: center; color: var(--muted); margin-bottom: 44px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    perspective: 1200px;
+  }
+
+.card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.035), transparent 60%), var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 26px 24px;
+    position: relative;
+    overflow: hidden;
+    transform-style: preserve-3d;
+    transition: transform .3s ease, border-color .25s, box-shadow .25s;
+    will-change: transform;
+  }
+
+  .card.reveal:not(.in) { opacity: 0; transition: none; }
+  .card.reveal.in {
+    animation: cardIn .6s cubic-bezier(.2,.7,.3,1) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(44px) scale(.96); filter: blur(8px); }
+    to { opacity: 1; transform: none; filter: none; }
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 15px;
+    background: conic-gradient(from var(--spin, 0deg), transparent 0%, rgba(129,140,248,0.5) 12%, rgba(34,211,238,0.5) 20%, transparent 32%);
+    opacity: 0;
+    transition: opacity .3s;
+    z-index: 0;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    padding: 2px;
+    animation: spinBorder 3s linear infinite;
+  }
+
+  @keyframes spinBorder { to { --spin: 360deg; } }
+
+  .card:hover::before { opacity: 1; }
+
+  .card:hover { border-color: rgba(129, 140, 248, 0.45); box-shadow: 0 22px 50px -22px rgba(99,102,241,0.45); }
+
+  .card .icon {
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    display: grid; place-items: center;
+    font-size: 21px;
+    margin-bottom: 16px;
+    background: rgba(129, 140, 248, 0.12);
+    border: 1px solid rgba(129, 140, 248, 0.25);
+    transition: transform .3s, background .3s, box-shadow .3s;
+  }
+
+  .card:hover .icon {
+    transform: translateZ(24px) rotate(-6deg) scale(1.12);
+    background: rgba(129, 140, 248, 0.22);
+    box-shadow: 0 0 22px -4px rgba(129,140,248,0.7);
+  }
+
+  .card h3 { font-size: 17px; margin-bottom: 8px; transform: translateZ(16px); }
+
+  .card p { color: var(--muted); font-size: 14px; transform: translateZ(10px); }
+
+  @media (max-width: 880px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+    nav .links { display: none; }
+  }
+
+  .privacy { padding: 60px 0 80px; }
+
+  .privacy-box {
+    max-width: 720px;
+    margin: 40px auto 0;
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.05), transparent), var(--card);
+    border: 1px solid rgba(34, 211, 238, 0.25);
+    border-radius: 16px;
+    padding: 34px 36px;
+    text-align: center;
+  }
+
+  .privacy-box .shield {
+    font-size: 40px;
+    display: inline-block;
+    animation: shieldFloat 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 16px rgba(52, 211, 153, 0.5));
+  }
+
+  @keyframes shieldFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+  .privacy-box h3 { font-size: 21px; margin: 10px 0 14px; color: var(--accent1); }
+
+  .privacy-box p { color: var(--muted); font-size: 15px; }
+
+  .download { padding: 30px 0 110px; text-align: center; }
+
+  .download h2 { font-size: 32px; font-weight: 800; letter-spacing: 1px; margin-bottom: 14px; }
+
+  .download .dl-note { color: var(--muted); font-size: 14px; margin-bottom: 34px; }
+
+  .dl-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 26px;
+    flex-wrap: wrap;
+  }
+
+  .file-info {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: left;
+    line-height: 2;
+    border-left: 1px solid var(--line);
+    padding-left: 26px;
+  }
+
+  .file-info b { color: var(--text); font-weight: 600; }
+
+  .maint {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 42px 54px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: radial-gradient(1200px 400px at 50% -10%, rgba(248,113,113,.08), transparent 60%);
+    margin-bottom: 16px;
+    animation: maintPulse 2.6s ease-in-out infinite;
+  }
+
+  .maint-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: 3px; color: var(--red); font-weight: 700; }
+
+  .maint-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 12px var(--red); animation: blink 1.1s step-start infinite; }
+
+  .maint-title { font-size: 26px; font-weight: 800; margin: 0; letter-spacing: .5px; }
+
+  .maint-sub { color: var(--muted); font-size: 15px; margin: 0; line-height: 1.7; }
+
+  .countdown { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+
+  .cd-cell { min-width: 74px; padding: 16px 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(139,147,167,.06); }
+
+  .cd-num { font-family: "Unbounded", "Manrope", "Segoe UI", sans-serif; font-size: 28px; font-weight: 800; color: var(--accent1); text-shadow: 0 0 22px rgba(34,211,238,.35); line-height: 1; }
+
+  .cd-lbl { margin-top: 8px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+
+  .cd-colon { font-family: "Unbounded", "Manrope", "Segoe UI", sans-serif; font-size: 26px; font-weight: 800; color: var(--accent2); animation: blinkSoft 1s ease-in-out infinite; }
+
+  .maint-delay { color: var(--green); font-size: 13px; }
+
+  @keyframes maintPulse { 0%, 100% { box-shadow: 0 0 0 1px var(--line) inset, 0 0 22px rgba(248,113,113,.12); } 50% { box-shadow: 0 0 0 1px rgba(248,113,113,.35) inset, 0 0 36px rgba(248,113,113,.28); } }
+
+  @keyframes blink { 50% { opacity: .2; } }
+
+  @keyframes blinkSoft { 50% { opacity: .35; } }
+
+  .kbd {
+    display: inline-block;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 1px 6px;
+  }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 30px 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  footer .wrap { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+
+  footer a { color: var(--accent2); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  .reveal { opacity: 0; transform: translateY(40px); filter: blur(10px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.3,1), filter .7s ease; }
+  .reveal.in { opacity: 1; transform: none; filter: none; }
+
+  .intro {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    transition: opacity .6s ease;
+  }
+
+  .intro.gone { opacity: 0; pointer-events: none; }
+
+  .intro-brand {
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: 12px;
+    background: linear-gradient(100deg, #67e8f9, var(--accent2), var(--accent3));
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: brandSlide 3.5s ease-in-out infinite;
+  }
+
+  .intro-box {
+    width: 220px;
+    height: 8px;
+    border-radius: 99px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+
+  .intro-fill {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2));
+    box-shadow: 0 0 16px rgba(129,140,248,0.8);
+    animation: introFill 1.15s ease forwards;
+  }
+
+  @keyframes introFill { to { width: 100%; } }
+
+  .intro-txt { font-family: Consolas, monospace; font-size: 12px; color: var(--muted); }
+
+  nav .links a { position: relative; }
+  nav .links a::after {
+    content: "";
+    position: absolute;
+    left: 50%; right: 50%;
+    bottom: -7px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent1), var(--accent3));
+    transition: left .3s ease, right .3s ease;
+  }
+
+  nav .links a:hover::after,
+  nav .links a.active::after { left: 0; right: 0; }
+
+  nav .links a.active { color: var(--text); }
+
+  .hero { position: relative; }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    transition: opacity .4s;
+  }
+
+  .scroll-hint .wheel {
+    width: 22px; height: 34px;
+    border: 1.5px solid var(--muted);
+    border-radius: 12px;
+    position: relative;
+    opacity: .7;
+  }
+
+  .scroll-hint .wheel::after {
+    content: "";
+    position: absolute;
+    top: 6px; left: 50%;
+    width: 3px; height: 6px;
+    margin-left: -1.5px;
+    border-radius: 2px;
+    background: var(--accent2);
+    animation: wheelDrop 1.6s ease-in-out infinite;
+  }
+
+  @keyframes wheelDrop {
+    0% { transform: translateY(0); opacity: 1; }
+    70% { transform: translateY(10px); opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  .hr {
+    display: block;
+    width: 90px;
+    height: 3px;
+    margin: 16px auto 0;
+    border-radius: 99px;
+    background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+    transform: scaleX(0);
+    transition: transform .8s cubic-bezier(.2,.7,.3,1);
+  }
+
+  .reveal.in + .hr { transform: scaleX(1); }
+
+  .card.reveal.in .icon {
+    animation: iconIn .55s cubic-bezier(.2,.7,.3,1) backwards;
+    animation-delay: calc(var(--i, 0) * 90ms + 220ms);
+  }
+
+  @keyframes iconIn {
+    from { opacity: 0; transform: scale(.4) rotate(-30deg); }
+    to { opacity: 1; transform: scale(1) rotate(0); }
+  }
+
+  .card:hover .icon { transition: transform .3s, box-shadow .3s, background .3s; }
+
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .foot-note { color: var(--muted); font-size: 12px; margin-top: 8px; max-width: 240px; }
+
+  .foot-links { display: flex; flex-direction: column; gap: 8px; }
+
+  .foot-links a { color: var(--muted); text-decoration: none; font-size: 13px; transition: color .2s, transform .2s; display: inline-block; }
+  .foot-links a:hover { color: var(--accent2); transform: translateX(3px); }
+
+  .foot-meta { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); align-items: flex-end; text-align: right; }
+
+  .support { padding: 40px 0 90px; }
+
+  .support-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    max-width: 900px;
+    margin: 40px auto 0;
+  }
+
+  .support-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent 60%), var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 26px 24px;
+    text-align: center;
+    transition: transform .3s ease, border-color .3s, box-shadow .3s;
+  }
+
+  .support-card:hover { transform: translateY(-5px); border-color: rgba(232, 121, 249, 0.4); box-shadow: 0 20px 46px -22px rgba(232,121,249,0.35); }
+
+  .support-icon {
+    width: 46px; height: 46px;
+    margin: 0 auto 14px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    font-size: 21px;
+    background: rgba(232, 121, 249, 0.1);
+    border: 1px solid rgba(232, 121, 249, 0.25);
+  }
+
+  .support-card h3 { font-size: 17px; margin-bottom: 8px; }
+
+  .support-card p { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+
+  .discord-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    background: rgba(129, 140, 248, 0.12);
+    border: 1px solid rgba(129, 140, 248, 0.4);
+    border-radius: 999px;
+    padding: 10px 18px;
+    transition: transform .2s, box-shadow .2s, background .2s;
+  }
+
+  .discord-chip:hover { transform: translateY(-2px); background: rgba(129, 140, 248, 0.2); box-shadow: 0 0 18px -6px rgba(129,140,248,0.7); }
+
+  .chip-ok { font-size: 11px; font-weight: 600; color: var(--accent1); text-transform: uppercase; letter-spacing: .5px; }
+
+  #copy-ok.done { color: var(--green); }
+
+  @media (max-width: 640px) {
+    .footer-grid { grid-template-columns: 1fr; }
+    .foot-meta { align-items: flex-start; text-align: left; }
+    .support-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ===== Cheat menu overview ===== */
+  .cheat { padding: 60px 0; }
+
+  .cheat-stage {
+    --hue: rgba(34, 211, 238, 0.16);
+    position: relative;
+    max-width: 980px;
+    margin: 40px auto 0;
+    border: 1px solid rgba(120, 160, 255, 0.18);
+    border-radius: 18px;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 420px at 50% 120%, var(--hue), transparent 60%),
+      linear-gradient(180deg, #0a101f, #070b14);
+    box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.9), 0 0 60px -20px rgba(129, 140, 248, 0.4);
+    transition: background .5s ease;
+  }
+
+  .cheat-stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wm {
+    position: absolute;
+    top: 14px; left: 16px;
+    z-index: 3;
+    pointer-events: none;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: var(--accent1);
+    text-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity .3s, transform .3s;
+  }
+
+  .wm.show { opacity: 1; transform: none; }
+
+  .cm-hud {
+    position: absolute;
+    top: 14px; right: 16px;
+    z-index: 3;
+    pointer-events: none;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .cm-hud b { color: var(--green); font-weight: 600; }
+
+  .cm-menu {
+    --cm-alpha: 1;
+    position: relative;
+    z-index: 2;
+    width: min(760px, calc(100% - 24px));
+    margin: 52px auto 40px;
+    background: rgba(13, 19, 38, 0.96);
+    border: 1px solid rgba(120, 160, 255, 0.28);
+    border-radius: 12px;
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    opacity: var(--cm-alpha);
+    overflow: hidden;
+  }
+
+  .cm-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .cm-title i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); flex-shrink: 0; }
+  .cm-title i:nth-child(1) { background: var(--red); }
+  .cm-title i:nth-child(2) { background: #fbbf24; }
+  .cm-title i:nth-child(3) { background: var(--green); }
+
+  .cm-title b { font-size: 12px; font-weight: 700; letter-spacing: 1px; }
+
+  .cm-hint { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+  .cm-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 12px 0;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+
+  .cm-tab {
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px 8px 0 0;
+    transition: color .2s, background .2s;
+    white-space: nowrap;
+  }
+
+  .cm-tab:hover { color: var(--text); }
+
+  .cm-tab.active {
+    color: #fff;
+    background: linear-gradient(100deg, rgba(34, 211, 238, 0.16), rgba(129, 140, 248, 0.2));
+    box-shadow: inset 0 -2px 0 var(--accent2);
+  }
+
+  .cm-body { padding: 14px 16px 18px; min-height: 300px; }
+
+  .cm-panel { display: none; }
+
+  .cm-panel.active {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 28px;
+    animation: cmIn .3s ease;
+  }
+
+  @media (max-width: 620px) { .cm-panel.active { grid-template-columns: 1fr; } }
+
+  @keyframes cmIn { from { opacity: 0; transform: translateY(6px); } }
+
+  .cm-grp {
+    grid-column: 1 / -1;
+    margin: 8px 0 2px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--accent1);
+    opacity: .85;
+  }
+
+  .cm-grp:first-child { margin-top: 0; }
+
+  .cm-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 4px 7px;
+    border-radius: 7px;
+  }
+
+  .cm-row:hover { background: rgba(129, 140, 248, 0.07); }
+
+  .cm-tgl {
+    width: 32px;
+    height: 18px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--line);
+    position: relative;
+    cursor: pointer;
+    transition: background .25s, border-color .25s;
+  }
+
+  .cm-tgl::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #a7b0c5;
+    transition: transform .25s, background .25s;
+  }
+
+  .cm-tgl.on {
+    background: linear-gradient(100deg, var(--accent1), var(--accent2));
+    border-color: transparent;
+    box-shadow: 0 0 10px -2px rgba(34, 211, 238, 0.6);
+  }
+
+  .cm-tgl.on::after { transform: translateX(14px); background: #fff; }
+
+  .cm-lbl { font-size: 13px; }
+
+  .cm-range {
+    flex: 1;
+    min-width: 70px;
+    accent-color: var(--accent2);
+    height: 3px;
+    cursor: pointer;
+  }
+
+  .cm-val {
+    min-width: 34px;
+    text-align: right;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    color: var(--accent1);
+  }
+
+  .cm-sel {
+    flex: 1;
+    min-width: 96px;
+    background: #0a1120;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 5px 7px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .cm-input {
+    flex: 1;
+    min-width: 90px;
+    background: #0a1120;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 6px 9px;
+    font: inherit;
+    font-size: 12px;
+  }
+
+  .cm-swatch {
+    width: 15px; height: 15px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 10px -3px currentColor;
+    transition: transform .15s;
+  }
+
+  .cm-swatch:hover { transform: scale(1.25); }
+
+  .cm-btn {
+    cursor: pointer;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 8px;
+    transition: transform .15s, border-color .2s, background .2s;
+  }
+
+  .cm-btn:hover { border-color: var(--accent2); background: rgba(129, 140, 248, 0.14); transform: translateY(-1px); }
+
+  .cm-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .cm-toast {
+    grid-column: 1 / -1;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    color: var(--green);
+    min-height: 16px;
+    margin-top: 8px;
+  }
+
+  .cm-preview {
+    grid-column: 1 / -1;
+    height: 74px;
+    margin-top: 4px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 8px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+    background: linear-gradient(180deg, var(--skinA, #22d3ee), var(--skinB, #818cf8) 55%, #0a1120);
+    transition: background .4s;
+  }
+
+  .cm-note {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .cm-note b { color: var(--accent2); font-weight: 600; }
+
+  .cheat .btn-note { text-align: center; }
+
+  /* ===== Polish: smoothness & beauty ===== */
+  html { scroll-behavior: smooth; }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .brand, .hero h1, .section-h, .intro-brand { text-rendering: optimizeLegibility; }
+
+  .hero h1 { letter-spacing: 8px; font-weight: 800; }
+  .intro-brand { letter-spacing: 10px; }
+
+  .hero h1 .hl { background-size: 240% 240%; }
+
+  .orb { will-change: transform; contain: layout style; }
+  .orb-a, .orb-b, .orb-c { animation: none; }
+
+  #dust {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.9;
+  }
+
+  .codebg {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+    mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+  }
+
+  .code-line {
+    position: absolute;
+    top: 0;
+    white-space: nowrap;
+    font-family: "Consolas", "Cascadia Code", "JetBrains Mono", monospace;
+    font-size: clamp(10px, 0.82vw, 13px);
+    letter-spacing: 0.5px;
+    animation: codeFloat var(--dur) linear infinite;
+    animation-delay: var(--del);
+    opacity: var(--op, 0.5);
+    will-change: transform;
+  }
+
+  .codebg .ck { color: #22d3ee; }
+  .codebg .ct { color: #818cf8; }
+  .codebg .cf { color: #a5b4fc; }
+  .codebg .cs { color: #e879f9; }
+  .codebg .cn { color: #34d399; }
+  .codebg .cp { color: #8fa0c7; }
+
+  @keyframes codeFloat {
+    from { transform: translate3d(0, 108vh, 0) rotate(var(--rot, 0deg)); }
+    to { transform: translate3d(var(--swx), -26vh, 0) rotate(calc(var(--rot, 0deg) * -1)); }
+  }
+
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--accent2), var(--accent3));
+    border-radius: 99px;
+    border: 2px solid var(--bg);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--accent1), var(--accent2)); }
+
+  nav { transition: background .4s ease, box-shadow .4s ease, border-color .4s ease; }
+  nav.scrolled {
+    background: rgba(7, 11, 20, 0.86);
+    box-shadow: 0 10px 40px -18px rgba(0, 0, 0, 0.8);
+  }
+
+  .card, .btn, .term, .privacy-box, .support-card, .discord-chip { backface-visibility: hidden; }
+
+  .reveal { will-change: opacity, transform, filter; }
+
+  .card { transition: transform .55s cubic-bezier(.22, 1, .36, 1), border-color .3s, box-shadow .3s; }
+  .card:hover { transition-duration: .18s; }
+
+  .terms-sec h2, .features h2, .term-sec h2, .download h2, .section-h {
+    background: linear-gradient(90deg, #67e8f9, var(--accent2), var(--accent3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .btn::after { transition: left .55s cubic-bezier(.22, 1, .36, 1); }
+
+  .intro {
+    transition: opacity .65s ease, transform .9s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .65s;
+    will-change: opacity, transform;
+  }
+
+  .intro.gone { opacity: 0; pointer-events: none; transform: scale(1.04); visibility: hidden; }
+
+  /* cheat menu glow & smoothness */
+  .cm-menu {
+    transform: translateZ(0);
+    transition: opacity .4s ease;
+  }
+
+  .cm-menu::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 14px;
+    background: conic-gradient(from var(--spin, 0deg), transparent 0%, rgba(129, 140, 248, 0.4) 12%, rgba(34, 211, 238, 0.4) 20%, transparent 32%);
+    opacity: .4;
+    z-index: -1;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    padding: 2px;
+    animation: spinBorder 6s linear infinite;
+  }
+
+  .cm-tab { position: relative; transition: color .25s, background .25s, box-shadow .25s; }
+
+  .cm-tab::after {
+    content: "";
+    position: absolute;
+    left: 14px; right: 14px;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2));
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .cm-tab:hover::after, .cm-tab.active::after { transform: scaleX(1); }
+  .cm-tab.active { box-shadow: 0 4px 18px -8px rgba(129, 140, 248, 0.55); margin-bottom: -1px; }
+
+  .cm-tgl { transition: background .3s, border-color .3s, box-shadow .3s; }
+  .cm-row { transition: background .2s ease; }
+
+  .cm-panel.active { animation: cmIn .5s cubic-bezier(.22, 1, .36, 1); }
+
+  @keyframes cmIn {
+    from { opacity: 0; transform: translateY(8px) scale(.995); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .orb, #dust, .bg-grid { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="intro" id="intro">
+  <div class="intro-brand">JLOR</div>
+  <div class="intro-box"><span class="intro-fill"></span></div>
+  <div class="intro-txt">initializing...</div>
+</div>
+
+<div id="progress"></div>
+<div id="cursor-glow"></div>
+
+<div class="bg-grid"></div>
+
+<div class="codebg" aria-hidden="true">
+  <pre class="code-line" style="--x:4%;--dur:44s;--del:-12s;--op:.14;--swx:40px;--rot:-1deg"><span class="ck">inline</span> <span class="ct">CreateMove_t</span> <span class="cp">CreateMove_o</span> <span class="cp">=</span> <span class="ck">nullptr</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:58%;--dur:36s;--del:-28s;--op:.16;--swx:-30px;--rot:.8deg"><span class="ck">const</span> <span class="ck">auto</span> <span class="cp">Result</span> <span class="cp">=</span> <span class="cf">CreateMove_o</span><span class="cp">(</span> <span class="cp">pCCSGOInput</span> <span class="cp">,</span> <span class="cp">split_screen_index</span> <span class="cp">,</span> <span class="cp">a3</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:22%;--dur:52s;--del:-6s;--op:.12;--swx:-46px;--rot:1.4deg"><span class="cf">GetCL_Bypass</span><span class="cp">()-></span><span class="cf">PostClientCreateMove</span><span class="cp">(</span> <span class="cp">pCCSGOInput</span> <span class="cp">,</span> <span class="cp">pUserCmd</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:70%;--dur:40s;--del:-33s;--op:.15;--swx:36px;--rot:-1.2deg"><span class="ct">Math</span><span class="cp">::</span><span class="cf">NormalizeAngles</span><span class="cp">(</span> <span class="cp">*ViewAngles</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:38%;--dur:47s;--del:-20s;--op:.13;--swx:-24px;--rot:2deg"><span class="ct">QAngle</span> <span class="cp">AimAngles</span> <span class="cp">=</span> <span class="ct">Math</span><span class="cp">::</span><span class="cf">CalcAngle</span><span class="cp">(</span> <span class="cp">vEye</span> <span class="cp">,</span> <span class="cp">BonePos</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:84%;--dur:34s;--del:-8s;--op:.17;--swx:30px;--rot:-1.6deg"><span class="ct">Math</span><span class="cp">::</span><span class="cf">ClampAngles</span><span class="cp">(</span> <span class="cp">*ViewAngles</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:10%;--dur:56s;--del:-39s;--op:.12;--swx:52px;--rot:1deg"><span class="ct">QAngle</span> <span class="cp">Delta</span> <span class="cp">=</span> <span class="cp">AimAngles</span> <span class="cp">-</span> <span class="cp">CurrentViewAngles</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:46%;--dur:38s;--del:-16s;--op:.16;--swx:-36px;--rot:-.8deg"><span class="ct">Math</span><span class="cp">::</span><span class="cf">SmoothAngles</span><span class="cp">(</span> <span class="cp">ViewAngles</span> <span class="cp">,</span> <span class="cp">AimAngles</span> <span class="cp">,</span> <span class="cp">OutAngles</span> <span class="cp">,</span> <span class="cp">std::clamp(</span> <span class="ct">Settings</span><span class="cp">::</span><span class="ct">Aim</span><span class="cp">::</span><span class="cp">Smooth</span> <span class="cp">,</span> <span class="cn">1.f</span> <span class="cp">,</span> <span class="cn">30.f</span> <span class="cp">)</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:64%;--dur:50s;--del:-2s;--op:.13;--swx:44px;--rot:1.8deg"><span class="ck">const</span> <span class="ct">QAngle</span> <span class="cp">Punch</span> <span class="cp">=</span> <span class="cf">AimPunchCache</span><span class="cp">[</span> <span class="cp">AimPunchCache</span><span class="cp">.</span><span class="cf">Count</span><span class="cp">()</span> <span class="cp">-</span> <span class="cn">1</span> <span class="cp">];</span></pre>
+  <pre class="code-line" style="--x:26%;--dur:42s;--del:-26s;--op:.15;--swx:-30px;--rot:-2deg"><span class="ct">ImGui</span><span class="cp">::</span><span class="cf">PushStyleVar</span><span class="cp">(</span> <span class="ct">ImGuiStyleVar_Alpha</span> <span class="cp">,</span> <span class="cp">MenuAlpha</span> <span class="cp">*</span> <span class="cp">m_fOpenAlpha</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:78%;--dur:46s;--del:-11s;--op:.12;--swx:26px;--rot:1.2deg"><span class="ct">ImGui</span><span class="cp">::</span><span class="cf">SetNextWindowSize</span><span class="cp">(</span> <span class="ct">ImVec2</span><span class="cp">(</span> <span class="cn">780.f</span> <span class="cp">,</span> <span class="cn">520.f</span> <span class="cp">)</span> <span class="cp">,</span> <span class="ct">ImGuiCond_Once</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:14%;--dur:33s;--del:-24s;--op:.17;--swx:-40px;--rot:-1.4deg"><span class="cf">RenderCheckBox</span><span class="cp">(</span> <span class="cf">L</span><span class="cp">(</span> <span class="cs">"Active"</span> <span class="cp">,</span> <span class="cs">"Активен"</span> <span class="cp">)</span> <span class="cp">,</span> <span class="cf">XorStr</span><span class="cp">(</span> <span class="cs">"##Visual.Active"</span> <span class="cp">)</span> <span class="cp">,</span> <span class="ct">Settings</span><span class="cp">::</span><span class="ct">Visual</span><span class="cp">::</span><span class="cp">Active</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:52%;--dur:54s;--del:-34s;--op:.12;--swx:34px;--rot:2.2deg"><span class="ct">ImGui</span><span class="cp">::</span><span class="cf">TextColored</span><span class="cp">(</span> <span class="cp">Accent</span> <span class="cp">,</span> <span class="cf">XorStr</span><span class="cp">(</span> <span class="cp">CHEAT_NAME</span> <span class="cp">)</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:88%;--dur:39s;--del:-18s;--op:.14;--swx:-28px;--rot:-.6deg"><span class="ct">ImGui</span><span class="cp">::</span><span class="cf">TextDisabled</span><span class="cp">(</span> <span class="cf">XorStr</span><span class="cp">(</span> <span class="cs">"CS2 "</span> <span class="cp">CHEAT_VERSION</span> <span class="cp">)</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:32%;--dur:48s;--del:-4s;--op:.15;--swx:46px;--rot:-1.8deg"><span class="ck">const</span> <span class="ck">float</span> <span class="cp">fPulse</span> <span class="cp">=</span> <span class="cn">0.92f</span> <span class="cp">+</span> <span class="cn">0.08f</span> <span class="cp">*</span> <span class="cf">sinf</span><span class="cp">(</span> <span class="cp">static_cast</span><span class="cp">&lt;float&gt;(</span> <span class="ct">ImGui</span><span class="cp">::</span><span class="cf">GetTime</span><span class="cp">()</span> <span class="cp">)</span> <span class="cp">*</span> <span class="cn">2.8f</span> <span class="cp">)</span><span class="cp">;</span></pre>
+  <pre class="code-line" style="--x:6%;--dur:30s;--del:-22s;--op:.16;--swx:44px;--rot:1deg"><span class="cp">pList</span><span class="cp">-></span><span class="cf">AddRectFilled</span><span class="cp">(</span> <span class="cp">IconMin</span> <span class="cp">,</span> <span class="cp">IconMax</span> <span class="cp">,</span> <span class="ct">ImGui</span><span class="cp">::</span><span class="cf">ColorConvertFloat4ToU32</span><span class="cp">(</span> <span class="ct">ImVec4</span><span class="cp">(</span> <span class="cp">Color</span> <span class="cp">)</span> <span class="cp">)</span> <span class="cp">,</span> <span class="cn">5.f</span> <span class="cp">)</span><span class="cp">;</span></pre>
+</div>
+<div class="orb orb-a"></div>
+<div class="orb orb-b"></div>
+<div class="orb orb-c"></div>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span>JLOR</span></div>
+    <div class="links">
+      <a href="#features">Возможности</a>
+      <a href="#demo">Демо</a>
+      <a href="#cheat">Меню</a>
+      <a href="#privacy">Приватность</a>
+      <a href="#support">Поддержка</a>
+      <a href="#download" class="badge">Скачать</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow up d1"><span class="dot"></span> next-generation CS2 loader</div>
+    <h1 class="up d2">
+      <span class="title-wrap">
+        <span class="title-glow"></span>
+        <span class="cl"><span class="hl" style="--i:0">J</span><span class="hl" style="--i:1">L</span><span class="hl" style="--i:2">O</span><span class="hl" style="--i:3">R</span></span>
+        <span class="shimmer" aria-hidden="true">JLOR</span>
+      </span>
+    </h1>
+    <div class="rot-chip up d3">всё внутри одного лоадера: <span class="word" id="rot-word">инжект</span></div>
+    <p class="sub up d4">Быстрый и стабильный загрузчик для CS2. Лагающий интерфейс, читы и слежка — это не про нас.</p>
+    <p class="meta up d4">Internal инжект &nbsp;·&nbsp; меню в одном окне &nbsp;·&nbsp; автоподхват игры</p>
+    <div class="btn-wrap up d5">
+      <div class="btn-halo"></div>
+      <a href="#download" id="dl-btn" class="btn"><span class="arr">&#9203;</span> Обновление до 10.09</a>
+    </div>
+    <p class="btn-note up d5">Скачивание временно недоступно &nbsp;·&nbsp; <b>&#10003; телеметрия отключена</b> &nbsp;·&nbsp; v1.0.6 скоро</p>
+  </div>
+  <div class="scroll-hint">
+    <span class="wheel"></span>
+    <span>листай вниз</span>
+  </div>
+</header>
+
+<section class="term-sec" id="demo">
+  <div class="wrap">
+    <h2 class="reveal">Как это выглядит</h2>
+    <span class="hr"></span>
+    <p class="desc reveal">Живая игрушка бота лоадера — без скриншотов и видео.</p>
+    <div class="term reveal">
+      <div class="term-head">
+        <i></i><i></i><i></i>
+        <span class="term-title">Jlor Loader</span>
+      </div>
+      <div class="term-body" id="term-body"></div>
+    </div>
+  </div>
+</section>
+
+<section class="cheat" id="cheat">
+  <div class="wrap">
+    <h2 class="section-h reveal">Обзор меню</h2>
+    <span class="hr"></span>
+    <p class="sub desc reveal" style="text-align:center">Встроенное меню чита прямо на странице — щёлкайте тумблеры, двигайте ползунки и переключайте вкладки как в игре.</p>
+
+    <div class="cheat-stage reveal" id="cheat-stage">
+      <div class="wm show" id="cm-wm">Jlor v2.0.0</div>
+      <div class="cm-hud">CS2 &nbsp;·&nbsp; <b>240 FPS</b></div>
+
+      <div class="cm-menu" id="cm-menu">
+        <div class="cm-title">
+          <i></i><i></i><i></i>
+          <b>Jlor Menu</b>
+          <span class="cm-hint">INSERT — скрыть</span>
+        </div>
+
+        <div class="cm-tabs">
+          <button class="cm-tab active" data-cmt="vis" type="button">Визуал</button>
+          <button class="cm-tab" data-cmt="skin" type="button">Скины</button>
+          <button class="cm-tab" data-cmt="aim" type="button">Аим</button>
+          <button class="cm-tab" data-cmt="misc" type="button">Разное</button>
+          <button class="cm-tab" data-cmt="col" type="button">Цвета</button>
+          <button class="cm-tab" data-cmt="menu" type="button">Меню</button>
+        </div>
+
+        <div class="cm-body">
+
+          <div class="cm-panel active" data-cmp="vis">
+            <div class="cm-grp">Визуал</div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Активен</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Команда</span></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Враг</span></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Только видимые</span></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Рамка игрока</span></div>
+            <div class="cm-row"><span class="cm-lbl">Тип рамки</span><select class="cm-sel"><option selected>2D</option><option>3D</option><option>Углы</option></select></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Скелет</span></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Свечение</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Имя</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Оружие</span></div>
+            <div class="cm-grp">Дополнительно</div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Полоса здоровья</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Полоса брони</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Дистанция</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Флаги</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Линии к низу</span></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Круг ФОВ</span></div>
+          </div>
+
+          <div class="cm-panel" data-cmp="skin">
+            <div class="cm-grp">Skin Changer</div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Скин-ченджер</span></div>
+            <div class="cm-row"><span class="cm-lbl">Оружие</span><select class="cm-sel"><option selected>AK-47</option><option>AWP</option><option>M4A1-S</option><option>USP-S</option><option>Desert Eagle</option></select></div>
+            <div class="cm-row"><span class="cm-lbl">ID скина</span><input class="cm-range" id="cm-id" type="range" min="0" max="1000" value="308"><span class="cm-val" data-for="cm-id">308</span></div>
+            <div class="cm-row"><span class="cm-lbl">Износ</span><input class="cm-range" id="cm-wear" type="range" min="0" max="100" value="15"><span class="cm-val" data-for="cm-wear">0.15</span></div>
+            <div class="cm-row"><span class="cm-lbl">Сид</span><input class="cm-range" id="cm-seed" type="range" min="0" max="999" value="0"><span class="cm-val" data-for="cm-seed">0</span></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">StatTrak</span></div>
+            <div class="cm-row"><span class="cm-lbl">Поиск</span><input class="cm-input" placeholder="название скина..."></div>
+            <div class="cm-preview" id="cm-preview">AK-47 · skin #308</div>
+          </div>
+
+          <div class="cm-panel" data-cmp="aim">
+            <div class="cm-grp">Легит аим</div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Легит аим</span></div>
+            <div class="cm-row"><span class="cm-lbl">Хитбокс</span><select class="cm-sel"><option selected>Голова</option><option>Шея</option><option>Грудь</option><option>Пояс</option></select></div>
+            <div class="cm-row"><span class="cm-lbl">ФОВ (градусы)</span><input class="cm-range" id="cm-afov" type="range" min="0" max="180" value="30"><span class="cm-val" data-for="cm-afov">30</span></div>
+            <div class="cm-row"><span class="cm-lbl">Сглаживание</span><input class="cm-range" id="cm-smooth" type="range" min="1" max="30" value="6"><span class="cm-val" data-for="cm-smooth">6</span></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Только видимые</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Рекоил-компенсация</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Свои (команда)</span></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Аим по кнопке</span><select class="cm-sel" style="flex:0 0 auto"><option>MOUSE4</option><option>MOUSE5</option><option selected>LALT</option></select></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Круг ФОВ</span></div>
+            <div class="cm-grp">Триггербот</div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Триггербот</span></div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">По кнопке</span><select class="cm-sel" style="flex:0 0 auto"><option selected>CTRL</option><option>MOUSE4</option></select></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Только голова</span></div>
+            <div class="cm-row"><span class="cm-lbl">Задержка (мс)</span><input class="cm-range" id="cm-tdelay" type="range" min="0" max="250" value="25"><span class="cm-val" data-for="cm-tdelay">25</span></div>
+            <div class="cm-row"><span class="cm-tgl"></span><span class="cm-lbl">Свои (команда)</span></div>
+          </div>
+
+          <div class="cm-panel" data-cmp="misc">
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Авто-прыжок (BunnyHop)</span></div>
+            <div class="cm-row"><span class="cm-tgl on" data-wm></span><span class="cm-lbl">Водяной знак</span></div>
+            <div class="cm-grp">Камера</div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Смена ФОВ</span></div>
+            <div class="cm-row"><span class="cm-lbl">ФОВ камеры</span><input class="cm-range" id="cm-cfov" type="range" min="80" max="120" value="100"><span class="cm-val" data-for="cm-cfov">100</span></div>
+            <div class="cm-row"><span class="cm-lbl">ФОВ оружия</span><input class="cm-range" id="cm-vfov" type="range" min="60" max="110" value="70"><span class="cm-val" data-for="cm-vfov">70</span></div>
+            <div class="cm-row"><span class="cm-lbl">Соотношение сторон</span><input class="cm-range" id="cm-aspect" type="range" min="100" max="200" value="160" step="5"><span class="cm-val" data-for="cm-aspect">1.60</span></div>
+            <div class="cm-grp">Мир</div>
+            <div class="cm-row"><span class="cm-tgl on"></span><span class="cm-lbl">Окраска мира</span></div>
+            <div class="cm-row"><span class="cm-lbl">Цвет</span>
+              <span class="cm-swatch" data-swatch style="color:#22d3ee;background:#22d3ee"></span>
+              <span class="cm-swatch" data-swatch style="color:#e879f9;background:#e879f9"></span>
+              <span class="cm-swatch" data-swatch style="color:#fbbf24;background:#fbbf24"></span>
+            </div>
+            <div class="cm-row"><span class="cm-lbl">Интенсивность</span><input class="cm-range" id="cm-int" type="range" min="0" max="100" value="60"><span class="cm-val" data-for="cm-int">60</span></div>
+            <div class="cm-row"><span class="cm-lbl">Прозрачность оружия</span><input class="cm-range" id="cm-vma" type="range" min="0" max="100" value="85"><span class="cm-val" data-for="cm-vma">85</span></div>
+          </div>
+
+          <div class="cm-panel" data-cmp="col">
+            <div class="cm-grp">Рамка игрока</div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#34d399;background:#34d399"></span><span class="cm-lbl">Рамка TT</span></div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#22d3ee;background:#22d3ee"></span><span class="cm-lbl">Рамка TT (видимая)</span></div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#f87171;background:#f87171"></span><span class="cm-lbl">Рамка CT</span></div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#fb923c;background:#fb923c"></span><span class="cm-lbl">Рамка CT (видимая)</span></div>
+            <div class="cm-grp">Скелет</div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#34d399;background:#34d399"></span><span class="cm-lbl">Скелет TT</span></div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#22d3ee;background:#22d3ee"></span><span class="cm-lbl">Скелет TT (видимый)</span></div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#f87171;background:#f87171"></span><span class="cm-lbl">Скелет CT</span></div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#fb923c;background:#fb923c"></span><span class="cm-lbl">Скелет CT (видимый)</span></div>
+            <div class="cm-grp">Свечение</div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#34d399;background:#34d399"></span><span class="cm-lbl">Свечение TT</span></div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#22d3ee;background:#22d3ee"></span><span class="cm-lbl">Свечение TT (видимое)</span></div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#f87171;background:#f87171"></span><span class="cm-lbl">Свечение CT</span></div>
+            <div class="cm-row"><span class="cm-swatch" data-sw style="color:#fb923c;background:#fb923c"></span><span class="cm-lbl">Свечение CT (видимое)</span></div>
+            <div class="cm-note">Здесь нажмите на цвет, чтобы прокрутить палитру.</div>
+          </div>
+
+          <div class="cm-panel" data-cmp="menu">
+            <div class="cm-grp">Меню</div>
+            <div class="cm-row"><span class="cm-lbl">Язык</span><select class="cm-sel"><option selected>Русский</option><option>Английский</option></select></div>
+            <div class="cm-row"><span class="cm-lbl">Прозрачность меню</span><input class="cm-range" id="cm-alpha" type="range" min="100" max="255" value="255"><span class="cm-val" data-for="cm-alpha">255</span></div>
+            <div class="cm-row"><span class="cm-lbl">Стиль меню</span><select class="cm-sel"><option selected>Классический</option><option>Современный</option></select></div>
+            <div class="cm-grp">Конфиги</div>
+            <div class="cm-row"><span class="cm-lbl">Имя</span><input class="cm-input" id="cm-cfgname" value="my_config"></div>
+            <div class="cm-actions">
+              <button class="cm-btn" id="cm-save" type="button">Сохранить</button>
+              <button class="cm-btn" id="cm-load" type="button">Загрузить</button>
+              <button class="cm-btn" id="cm-del" type="button">Удалить</button>
+            </div>
+            <div class="cm-toast" id="cm-toast"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <p class="btn-note reveal">В игре меню открывается и скрывается клавишей <span class="kbd">INSERT</span>.</p>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="wrap">
+    <h2 class="reveal">Возможности</h2>
+    <span class="hr"></span>
+    <p class="desc reveal">Всё внутри одного лоадера — ничего лишнего.</p>
+    <div class="grid stagger">
+
+      <div class="card reveal" style="--i:0">
+        <div class="icon">&#9889;</div>
+        <h3>Автоинжект</h3>
+        <p>Лоадер сам ждёт запуск cs2.exe, подхватывает игру и внедряет DLL без лишних действий.</p>
+      </div>
+
+      <div class="card reveal" style="--i:1">
+        <div class="icon">&#10024;</div>
+        <h3>Современный интерфейс</h3>
+        <p>Плавное меню с неон-анимациями в консоли. Никаких тормозов и рывков.</p>
+      </div>
+
+      <div class="card reveal" style="--i:2">
+        <div class="icon">&#127912;</div>
+        <h3>Skin Changer</h3>
+        <p>Свои скины без установки. Быстрый фильтр и поиск прямо в меню.</p>
+      </div>
+
+      <div class="card reveal" style="--i:3">
+        <div class="icon">&#128065;</div>
+        <h3>Visuals & ESP</h3>
+        <p>Снайплайны, бары здоровья, индикаторы состояний — настраиваются на лету.</p>
+      </div>
+
+      <div class="card reveal" style="--i:4">
+        <div class="icon">&#128274;</div>
+        <h3>Мгновенный отклик</h3>
+        <p>Автоапдейт оффсетов, актуальные сигнатуры под текущий билд игры.</p>
+      </div>
+
+      <div class="card reveal" style="--i:5">
+        <div class="icon">&#128200;</div>
+        <h3>Без телеметрии</h3>
+        <p>Мы не собираем и не передаём никаких данных пользователей. Никаких трекеров.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="privacy" id="privacy">
+  <div class="wrap">
+    <h2 class="section-h reveal">Приватность</h2>
+    <span class="hr"></span>
+    <div class="privacy-box reveal">
+      <div class="shield">&#128737;</div>
+      <h3>Телеметрия пользователей отключена</h3>
+      <p>Jlor не собирает и не передаёт личные данные. Никакой телеметрии, аналитики и отслеживания: загрузчик работает локально и ничего не отправляет.</p>
+    </div>
+  </div>
+</section>
+
+<section class="download" id="download">
+  <div class="wrap">
+    <h2 class="reveal">Скачать</h2>
+    <p class="dl-note reveal">Загрузка временно недоступна — Jlor закрыт на крупное обновление.</p>
+    <div class="maint reveal">
+      <div class="maint-badge"><span class="maint-dot"></span> ОБНОВЛЕНИЕ</div>
+      <h3 class="maint-title">Скачивание недоступно</h3>
+      <p class="maint-sub">Чит закрыт на крупное обновление до ~10 сентября 2026.<br>Следите за обратным отсчётом — после релиза ссылка снова заработает.</p>
+      <div class="countdown" id="countdown">
+        <div class="cd-cell"><div class="cd-num" id="cd-days">00</div><div class="cd-lbl">дней</div></div>
+        <div class="cd-colon">:</div>
+        <div class="cd-cell"><div class="cd-num" id="cd-hours">00</div><div class="cd-lbl">часов</div></div>
+        <div class="cd-colon">:</div>
+        <div class="cd-cell"><div class="cd-num" id="cd-minutes">00</div><div class="cd-lbl">минут</div></div>
+        <div class="cd-colon">:</div>
+        <div class="cd-cell"><div class="cd-num" id="cd-seconds">00</div><div class="cd-lbl">секунд</div></div>
+      </div>
+      <div class="maint-delay">Версия 1.0.6 · обновится автоматически</div>
+    </div>
+    <p class="btn-note reveal">Чтобы не пропустить релиз, напиши в Discord @vovabaltika999.</p>
+  </div>
+</section>
+
+<section class="support" id="support">
+  <div class="wrap">
+    <h2 class="section-h reveal">Поддержка</h2>
+    <span class="hr"></span>
+    <p class="sub desc reveal" style="text-align:center">Вопросы, баги и фидбек — пиши в Discord.</p>
+    <div class="support-grid">
+      <div class="support-card reveal" style="transition-delay:.05s">
+        <div class="support-icon">&#127911;</div>
+        <h3>Discord</h3>
+        <p>Помощь с установкой, отчёты об ошибках и идеи для обновлений.</p>
+        <button class="discord-chip" id="copy-discord" type="button">@vovabaltika999 <span class="chip-ok" id="copy-ok">копировать</span></button>
+      </div>
+      <div class="support-card reveal" style="transition-delay:.18s">
+        <div class="support-icon">&#128736;</div>
+        <h3>Не запускается?</h3>
+        <p>Проверь: запуск от имени администратора, антивирус (добавьте папку в исключения), наличие Jlor.dll рядом с Jlor.exe.</p>
+      </div>
+      <div class="support-card reveal" style="transition-delay:.31s">
+        <div class="support-icon">&#128214;</div>
+        <h3>Баги и статус</h3>
+        <p>Отслеживание проблем, чистота кода и быстрые фиксы — по кнопке «копировать» забери ник и напиши.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-grid">
+    <div>
+      <div class="brand" style="font-size:16px"><span>JLOR</span></div>
+      <p class="foot-note">Next-generation CS2 loader. For private testing only.</p>
+    </div>
+    <div class="foot-links">
+      <a href="#features">Возможности</a>
+      <a href="#demo">Демо</a>
+      <a href="#cheat">Меню</a>
+      <a href="#privacy">Приватность</a>
+      <a href="#support">Поддержка</a>
+      <a href="#download">Скачать</a>
+    </div>
+    <div class="foot-meta">
+      <div style="color:var(--text)">v1.0.5</div>
+      <div>Админ · телеметрия: выкл</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const $ = (s, c) => (c || document).querySelector(s);
+  const $$ = (s, c) => Array.from((c || document).querySelectorAll(s));
+
+  const progress = $("#progress");
+  addEventListener("scroll", () => {
+    const h = document.documentElement;
+    const p = h.scrollTop / (h.scrollHeight - h.clientHeight);
+    progress.style.width = (p * 100).toFixed(2) + "%";
+  }, { passive: true });
+
+  const glow = $("#cursor-glow");
+  addEventListener("mousemove", (e) => {
+    glow.style.left = e.clientX + "px";
+    glow.style.top = e.clientY + "px";
+  }, { passive: true });
+
+  const io = new IntersectionObserver((es) => {
+    es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  $$(".reveal").forEach((el) => io.observe(el));
+
+  const words = ["инжект", "автоапдейт", "скины", "мгновенное меню", "без телеметрии"];
+  let wi = 0;
+  const rotWord = $("#rot-word");
+  setInterval(() => {
+    wi = (wi + 1) % words.length;
+    rotWord.style.animation = "none";
+    void rotWord.offsetWidth;
+    rotWord.style.animation = "";
+    rotWord.textContent = words[wi];
+  }, 2200);
+
+  const cards = $$(".card");
+  cards.forEach((card) => {
+    card.addEventListener("mousemove", (e) => {
+      const r = card.getBoundingClientRect();
+      const rx = ((e.clientY - r.top) / r.height - 0.5) * 14;
+      const ry = ((e.clientX - r.left) / r.width - 0.5) * 14;
+      card.style.transform = "rotateX(" + (-rx).toFixed(2) + "deg) rotateY(" + ry.toFixed(2) + "deg) translateY(-4px)";
+    });
+    card.addEventListener("mouseleave", () => { card.style.transform = ""; });
+  });
+
+  const term = $("#term-body");
+
+  const bootIntro = [
+    `<div class="l cursor">\u2192 starting <span class="accent">jlor loader</span> v1.0.5</div>`,
+    `<div class="l dim">\u2192 checking offsets <span class="accent">· · · · · · · ·</span></div>`,
+    `<div class="l"><span class="ok">\u2713</span> offsets are up to date</div>`,
+    `<div class="l dim">\u2192 <span class="dim">telemetry</span>: <span class="ok">disabled</span></div>`
+  ];
+
+  const bootOutro = [
+    `<div class="l"><span class="ok">\u2713 ready</span></div>`,
+    `<div class="term-item"><span class="k">\u25c6</span><span class="name">internal loader</span><span class="st">\u25cf ready</span></div>`,
+    `<div class="term-item"><span class="k">\u25c6</span><span class="name">skin changer</span><span class="st">\u25cf ready</span></div>`,
+    `<div class="term-item"><span class="k">\u25c6</span><span class="name">visuals &amp; esp</span><span class="st">\u25cf soon</span></div>`
+  ];
+
+  const barHtml = (prog) => {
+    const filled = "\u2588".repeat(Math.round(prog / 100 * 24));
+    const empty = "\u2591".repeat(24 - filled.length);
+    return `<div class="l"><span class="bar">[</span><span class="bar">${filled + empty}</span><span class="bar">]</span> ${prog}% <span class="dim">boot</span></div>`;
+  };
+
+  function bootLoop() {
+    let prog = 0;
+    term.innerHTML = bootIntro[0];
+
+    const timer = setInterval(() => {
+      if (prog === 0) {
+        term.innerHTML = bootIntro.join("") + barHtml(0);
+        prog = 1;
+        return;
+      }
+
+      prog += 3;
+      if (prog > 100) prog = 100;
+      term.innerHTML = bootIntro.join("") + barHtml(prog);
+
+      if (prog >= 100) {
+        clearInterval(timer);
+        term.innerHTML = bootIntro.join("") + barHtml(100) + bootOutro.join("");
+        setTimeout(bootLoop, 2600);
+      }
+    }, 60);
+  }
+
+  let bootStarted = false;
+  const termIO = new IntersectionObserver((es) => {
+    es.forEach((e) => {
+      if (e.isIntersecting && !bootStarted) {
+        bootStarted = true;
+        termIO.disconnect();
+        bootLoop();
+      }
+    });
+  }, { threshold: 0.4 });
+
+  termIO.observe($(".term"));
+
+  const intro = $("#intro");
+  const introTxt = intro.querySelector(".intro-txt");
+  const introMsgs = ["initializing...", "loading fonts", "linking modules", "ready"];
+  let mi = 0;
+  const introTimer = setInterval(() => {
+    mi = Math.min(mi + 1, introMsgs.length - 1);
+    introTxt.textContent = introMsgs[mi];
+  }, 380);
+
+  setTimeout(() => {
+    intro.classList.add("gone");
+    clearInterval(introTimer);
+    document.body.classList.add("ready");
+    setTimeout(() => intro.remove(), 650);
+  }, 1150);
+
+  const navLinks = $$("nav .links a:not(.badge)");
+  const spySections = ["features", "demo", "cheat", "privacy", "support", "download"].map((id) => document.getElementById(id));
+
+  const spy = new IntersectionObserver((es) => {
+    es.forEach((e) => {
+      if (e.isIntersecting) {
+        const href = "#" + e.target.id;
+        navLinks.forEach((l) => l.classList.toggle("active", l.getAttribute("href") === href));
+      }
+    });
+  }, { rootMargin: "-35% 0px -60% 0px" });
+
+  spySections.forEach((s) => s && spy.observe(s));
+
+  const allNavLinks = $$("nav .links a");
+
+  const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  function smoothScrollTo(targetY) {
+    const startY = window.scrollY;
+    const dist = targetY - startY;
+    if (Math.abs(dist) < 2) return;
+    const dur = Math.min(1100, Math.max(450, Math.abs(dist) * 0.55));
+    const t0 = performance.now();
+
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      window.scrollTo(0, startY + dist * easeInOutCubic(p));
+      if (p < 1) requestAnimationFrame(step);
+      else fixActive();
+    };
+
+    requestAnimationFrame(step);
+  }
+
+  function fixActive() {
+    const y = window.scrollY + window.innerHeight * 0.4;
+    let best = null;
+    let bestY = 1e9;
+    spySections.forEach((s) => {
+      if (!s) return;
+      const r = s.getBoundingClientRect();
+      const mid = r.top + window.scrollY + r.height / 2;
+      const d = Math.abs(y - mid);
+      if (d < bestY) { bestY = d; best = s; }
+    });
+    if (best) {
+      navLinks.forEach((l) => l.classList.toggle("active", l.getAttribute("href") === "#" + best.id));
+    }
+  }
+
+  allNavLinks.forEach((link) => {
+    link.addEventListener("click", (e) => {
+      const href = link.getAttribute("href");
+      if (!href || !href.startsWith("#")) return;
+      e.preventDefault();
+      const target = document.getElementById(href.slice(1));
+      if (!target) return;
+      smoothScrollTo(target.getBoundingClientRect().top + window.scrollY - 64);
+      navLinks.forEach((l) => l.classList.remove("active"));
+      link.classList.add("active");
+    });
+  });
+
+  const heroDl = $("#dl-btn");
+  if (heroDl) {
+    heroDl.addEventListener("click", (e) => {
+      e.preventDefault();
+      const t = document.getElementById("download");
+      if (t) smoothScrollTo(t.getBoundingClientRect().top + window.scrollY - 64);
+    });
+  }
+
+  const scrollHint = $(".scroll-hint");
+  addEventListener("scroll", () => {
+    const hero = $(".hero").getBoundingClientRect().height;
+    scrollHint.style.opacity = (window.scrollY > hero * 0.3) ? "0" : "1";
+  }, { passive: true });
+
+  const copyBtn = $("#copy-discord");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText("vovabaltika999").then(() => {
+        const ok = $("#copy-ok");
+        if (ok) {
+          ok.textContent = "скопировано!";
+          ok.classList.add("done");
+          setTimeout(() => {
+            ok.textContent = "копировать";
+            ok.classList.remove("done");
+          }, 1800);
+        }
+      }).catch(() => {});
+    });
+  }
+
+  /* ===== Cheat menu overview ===== */
+  const cmMenu = $("#cm-menu");
+  if (cmMenu) {
+    const cmTabs = $$(".cm-tab");
+    const cmPanels = $$(".cm-panel");
+
+    cmTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        cmTabs.forEach((t) => t.classList.toggle("active", t === tab));
+        cmPanels.forEach((p) => p.classList.toggle("active", p.getAttribute("data-cmp") === tab.getAttribute("data-cmt")));
+      });
+    });
+
+    $$(".cm-tgl").forEach((t) => {
+      t.addEventListener("click", () => {
+        t.classList.toggle("on");
+        if (t.hasAttribute("data-wm")) {
+          $("#cm-wm").classList.toggle("show", t.classList.contains("on"));
+        }
+      });
+    });
+
+    $$(".cm-range").forEach((r) => {
+      r.addEventListener("input", () => {
+        const val = document.querySelector(".cm-val[data-for='" + r.id + "']");
+        if (!val) return;
+        let text = r.value;
+        if (r.id === "cm-wear" || r.id === "cm-aspect") text = (r.value / 100).toFixed(2);
+        val.textContent = text;
+
+        if (r.id === "cm-alpha") {
+          cmMenu.style.setProperty("--cm-alpha", (r.value / 255).toFixed(3));
+        }
+        if (r.id === "cm-id") {
+          const pre = $("#cm-preview");
+          if (pre) {
+            const h = Number(r.value) % 360;
+            pre.style.setProperty("--skinA", "hsl(" + h + " 90% 60%)");
+            pre.style.setProperty("--skinB", "hsl(" + ((h + 60) % 360) + " 85% 45%)");
+            pre.textContent = "AK-47 · skin #" + r.value;
+          }
+        }
+      });
+    });
+
+    const pal = ["#22d3ee", "#818cf8", "#e879f9", "#34d399", "#f87171", "#fbbf24", "#fb923c", "#a3e635"];
+
+    const hexToRgba = (hex, a) => {
+      const n = parseInt(hex.slice(1), 16);
+      return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+    };
+
+    $$(".cm-swatch").forEach((s) => {
+      s.addEventListener("click", () => {
+        const cur = s.style.background || s.style.color;
+        const next = pal[(pal.indexOf(cur) + 1) % pal.length];
+        s.style.background = next;
+        s.style.color = next;
+        if (s.hasAttribute("data-swatch")) {
+          $("#cheat-stage").style.setProperty("--hue", hexToRgba(next, 0.18));
+        }
+      });
+    });
+
+    const toast = $("#cm-toast");
+    const cfgName = () => ($("#cm-cfgname").value || "config").trim();
+    if (toast) {
+      const showToast = (msg) => {
+        toast.textContent = msg;
+        clearTimeout(toast._t);
+        toast._t = setTimeout(() => { toast.textContent = ""; }, 2200);
+      };
+      $("#cm-save").addEventListener("click", () => showToast("✓ конфиг «" + cfgName() + "» сохранён"));
+      $("#cm-load").addEventListener("click", () => showToast("✓ конфиг «" + cfgName() + "» загружен"));
+      $("#cm-del").addEventListener("click", () => showToast("— конфиг «" + cfgName() + "» удалён"));
+    }
+  }
+
+  /* ===== Smoothness & ambience ===== */
+  const navEl = $("nav");
+  if (navEl) {
+    const onScrollNav = () => navEl.classList.toggle("scrolled", window.scrollY > 24);
+    addEventListener("scroll", onScrollNav, { passive: true });
+    onScrollNav();
+  }
+
+  const orbSpecs = [
+    { el: $(".orb-a"), px: 0.14, ph: 0.0 },
+    { el: $(".orb-b"), px: -0.10, ph: 2.1 },
+    { el: $(".orb-c"), px: 0.06, ph: 4.2 }
+  ].filter((o) => o.el);
+
+  const orbs = orbSpecs.map((o) => Object.assign({ cur: 0 }, o));
+
+  if (orbs.length) {
+    let lastOrb = performance.now();
+    const orbFrame = (now) => {
+      const dt = Math.min((now - lastOrb) / 1000, 0.05);
+      lastOrb = now;
+      const st = now / 1000;
+      const par = window.scrollY;
+      for (const o of orbs) {
+        const target = par * o.px;
+        o.cur += (target - o.cur) * Math.min(dt * 5, 1);
+        const x = Math.sin(st * 0.45 + o.ph) * 30;
+        const y = Math.cos(st * 0.35 + o.ph) * 22 + o.cur;
+        const s = 1 + Math.sin(st * 0.3 + o.ph) * 0.06;
+        o.el.style.transform = "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0) scale(" + s.toFixed(3) + ")";
+      }
+      requestAnimationFrame(orbFrame);
+    };
+    requestAnimationFrame(orbFrame);
+  }
+
+  function makeDust() {
+    const cv = document.createElement("canvas");
+    cv.id = "dust";
+    document.body.appendChild(cv);
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    const colors = ["129,140,248", "34,211,238", "232,121,249"];
+    let w = 0, h = 0, parts = [];
+
+    const makeP = () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: 0.6 + Math.random() * 1.8,
+      vx: (Math.random() - 0.5) * 0.18,
+      vy: -(0.05 + Math.random() * 0.2),
+      a: 0.12 + Math.random() * 0.5,
+      tw: 0.3 + Math.random() * 2.2,
+      c: colors[(Math.random() * colors.length) | 0]
+    });
+
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = innerWidth;
+      h = innerHeight;
+      cv.width = w * dpr;
+      cv.height = h * dpr;
+      cv.style.width = w + "px";
+      cv.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const n = Math.min(70, Math.max(24, Math.floor(w / 26)));
+      parts = Array.from({ length: n }, makeP);
+    };
+
+    let t0 = performance.now();
+    const draw = (now) => {
+      const dt = Math.min((now - t0) / 1000, 0.05);
+      t0 = now;
+      ctx.clearRect(0, 0, w, h);
+      for (let i = 0; i < parts.length; i++) {
+        const p = parts[i];
+        p.x += p.vx * 60 * dt;
+        p.y += p.vy * 60 * dt;
+        if (p.y < -12) { p.y = h + 12; p.x = Math.random() * w; }
+        if (p.x < -12) p.x = w + 12;
+        else if (p.x > w + 12) p.x = -12;
+        const tw = 0.5 + 0.5 * Math.sin(now / 1000 * p.tw + i);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, 6.2832);
+        ctx.fillStyle = "rgba(" + p.c + "," + (p.a * tw).toFixed(3) + ")";
+        ctx.fill();
+      }
+      requestAnimationFrame(draw);
+    };
+
+    addEventListener("resize", size, { passive: true });
+    size();
+    requestAnimationFrame(draw);
+  }
+
+  /* ===== Maintenance countdown ===== */
+  const cdTarget = new Date(2026, 8, 10, 0, 0, 0); /* 10 сентября 2026, локальное время */
+  let cdReleased = false;
+  const pad2 = (n) => String(n).padStart(2, "0");
+
+  function tickCountdown() {
+    const left = Math.max(0, cdTarget.getTime() - Date.now());
+    if (!cdReleased && left <= 0) {
+      cdReleased = true;
+      const cd = $("#countdown");
+      if (cd) cd.innerHTML = '<div class="cd-cell" style="min-width:auto;padding:16px 26px"><div class="cd-num" style="font-size:16px">ОБНОВЛЕНИЕ ВЫШЛО</div></div>';
+      return;
+    }
+    const s = Math.floor(left / 1000);
+    const d = $("#cd-days"), h = $("#cd-hours"), m = $("#cd-minutes"), sec = $("#cd-seconds");
+    if (d) d.textContent = pad2(Math.floor(s / 86400));
+    if (h) h.textContent = pad2(Math.floor(s / 3600) % 24);
+    if (m) m.textContent = pad2(Math.floor(s / 60) % 60);
+    if (sec) sec.textContent = pad2(s % 60);
+  }
+
+  tickCountdown();
+  setInterval(tickCountdown, 1000);
+
+  makeDust();
+</script>
+</body>
+</html>
